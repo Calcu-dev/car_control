@@ -1,0 +1,20 @@
+[project]
+name = "car-control"
+version = "0.1"
+description = "Car control"
+authors = [
+    {name = "Adam Johnson", email="adamjohn@andrew.cmu.edu"}
+]
+maintainers = [
+    {name = "Adam Johnson", email="adamjohn@andrew.cmu.edu"}
+]
+dependencies = [
+    "setuptools"
+]
+
+# ...
+[tool.setuptools]
+packages = ["car_control"]
+
+[build-system]
+requires = ["setuptools"]
