@@ -5,15 +5,22 @@ import random
 import copy
 
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, size = None, coords = None):
         super().__init__()
-        self.surf = pygame.Surface((random.randint(10, 40), random.randint(10, 20)))
+        size = size if size is not None else (random.randint(10, 200), random.randint(10, 20))
+        coords = coords if coords is not None else (random.randint(0, 400), random.randint(-40, -20))
+
+        self.surf = pygame.Surface(size)
         self.surf.fill((255, 255, 255))
-        self.rect = self.surf.get_rect(center = (random.randint(400, 400), random.randint(-40, -20)))
+        self.rect = self.surf.get_rect(center = coords)
 
 class Environment(ABC):
     def __init__(self):
         self.sprites = pygame.sprite.Group()
+
+        self.delete_surface = Obstacle(size=(400, 1), coords=(200, 400))
+        self.max_objs = 10
+        self.last_reward_since_obs = 0
 
     @abstractmethod
     def _add_obstacle(self):
@@ -50,19 +57,33 @@ class RoadRam(Environment):
         self.vehicle_dimensions = (vehicle.surf.get_width(), vehicle.surf.get_height())
         self._create_random_offscreen()
 
-    def set_environment_bounds(self, bounds):
-        self.environment_bounds = pygame.Surface((200, 200))
-
     def _deriv_state(self):
         if self.last_vehicle_state is None:
             return [0 for x in self.vehicle_state]
         return [x - y for x,y in zip(self.vehicle_state, self.last_vehicle_state)]
 
     def _add_obstacle(self):
-        pass
+        self.sprites.add(Obstacle())
 
     def _collides(self, obj, surf):
-        return pygame.sprite.collide_rect(obj, surf)
+
+        if type(obj) == pygame.sprite.Sprite and type(surf) == pygame.sprite.Sprite:
+            return pygame.sprite.collide_rect(obj, surf)
+        
+        if type(obj) == Obstacle:
+            obj = obj.rect
+
+        if type(surf) == Obstacle:
+            surf = surf.rect
+
+        return surf.colliderect(obj)
+    
+    def check_vehicle_collision(self, vehicle):
+        for entity in self.sprites:
+            if self._collides(entity, vehicle):
+                return True
+            
+        return False
     
     def _create_random_offscreen(self):
         self.sprites.add(Obstacle())
@@ -71,12 +92,19 @@ class RoadRam(Environment):
         if self.vehicle_state is None:
             raise Exception("Vehicle state is not initialized")
         
-        d = self._deriv_state()
-        print(d)
-
+        delete_list = []
         for entity in self.sprites:
-            entity.rect.y = entity.rect.y - d[1]
-            print(entity.rect.y)
+
+            delete_list.append(entity if self._collides(entity, self.delete_surface) else None)
+
+            entity.rect.y = entity.rect.y + np.cos(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * 0.1
+            entity.rect.x = entity.rect.x + np.sin(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * 0.1
+        
+        # Remove entities
+        for entity in delete_list:
+            if entity is None:
+                continue
+            self.sprites.remove(entity)  
 
         return
 
@@ -86,12 +114,16 @@ class RoadRam(Environment):
 
         pass
 
-    def update_state(self, vehicle_state):
-        print("STATE", vehicle_state)
-        print("LAST STATE", self.last_vehicle_state)
+    def update_state(self, vehicle_state, reward):
         if vehicle_state != self.last_vehicle_state:
             self.last_vehicle_state = copy.deepcopy(self.vehicle_state)
             self.vehicle_state = copy.deepcopy(vehicle_state)
 
+        if len(self.sprites) < self.max_objs:
+            if random.randint(0, 100) < reward and (reward - self.last_reward_since_obs) > 1 :
+                self._add_obstacle()
+                self.last_reward_since_obs = reward
+
         self._update_display()
 
+pass

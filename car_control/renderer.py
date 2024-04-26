@@ -1,7 +1,7 @@
 import sys
 import os
 import pygame
-from vehicles.ackermann import Vehicle, Test
+from vehicles.ackermann import Vehicle, Test, AckermannSteer
 from environments.road import RoadRam
 from pygame.locals import *
 
@@ -26,9 +26,11 @@ class Renderer():
         self.environment = environment
         self.vehicle = vehicle
 
+        self.reward = 0
+        self.max_reward = 100.0
+
         self.clock = pygame.time.Clock()
 
-        self.run()
 
     def _draw_vehicle(self, vehicle_state):
         pygame.draw.rect()
@@ -59,18 +61,29 @@ class Renderer():
             u = self.vehicle.convert_to_control(subset_controls)
 
             state = self.vehicle.sim(u)
-            # print(state)
-            self.environment.update_state(state)
+            self.reward = self.vehicle.distance_traveled / 100.0
+
+            if self.reward > self.max_reward:
+                return self.reward
+            
+            self.environment.update_state(state, self.reward)
+
+            # Check for environment - vehicle collision
+            if self.environment.check_vehicle_collision(self.vehicle.rect):
+                return self.reward
             
             self._update_display()
             self.clock.tick(self.fps)
 
 
 if __name__ == "__main__":
-    vehicle = Test()
+    vehicle = AckermannSteer()
     environment=RoadRam(vehicle)
     renderer = Renderer(environment=environment, 
                         vehicle=vehicle)
+    
+    reward = renderer.run()
+    print(reward)
 
             
 

@@ -5,12 +5,17 @@ import pygame
 class Vehicle(ABC, pygame.sprite.Sprite):
     def __init__(self):
         self.surf = pygame.Surface((30, 30))
-        self.surf.fill((255,255,255))
+        self.surf.fill((255,0,0))
         self.rect = self.surf.get_rect(center = (200, 200))
+
+        self.dt = 0.1
+        self.distance_traveled = 0
         pass
 
     def _update(self):
-        pass
+        state = self.get_state()
+        self.rect.midbottom = pygame.math.Vector2(state[0], state[1])
+        self.distance_traveled += self.state[2] * self.dt
     
     def sim(self, u):
         """Simulate the controls of the input control vector u based on your parameters
@@ -28,14 +33,15 @@ class Vehicle(ABC, pygame.sprite.Sprite):
 
 class AckermannSteer(Vehicle):
     def __init__(self,
-                 mu = 7,
+                 mu = 0.2,
                  wheel_base = .48,
-                 accel_max = 2,
-                 vel_max = 25,
+                 accel_max = 100,
+                 vel_max = 200,
                  steer_max = np.pi/6,
                  steer_rate = 4,
-                 dt = 0.01,
+                 dt = 0.1,
                  ):
+        super().__init__()
         self.mu = mu
         self.wheel_base = wheel_base
         self.accel_max = accel_max
@@ -44,9 +50,10 @@ class AckermannSteer(Vehicle):
         self.steer_max = steer_max
         self.steer_rate = steer_rate
         self.dt = dt
+        self.state = [self.rect.centerx, self.rect.centery, 0, 0]
         
 
-    def sim(self, u: np.ndarray, prior_vel, prior_yaw):
+    def sim(self, u: np.ndarray):
         """Simulate the controls of the input control vector u based on your parameters
 
         Args:
@@ -55,29 +62,36 @@ class AckermannSteer(Vehicle):
         """
         
         """ Computing change in states """
+
+        prior_vel = self.state[2]
+
         delta_v = self.accel_max * u[0] * self.dt
         delta_angle = self.steer_rate * u[1]  * self.dt 
         
-        vel_update = prior_vel + delta_v
-        angle_update = prior_yaw + delta_angle
+        vel_update = prior_vel + delta_v# - self.mu * self.dt
+        delta_angle = np.clip(delta_angle, -1 * self.steer_max, self.steer_max)
+        angle_update = delta_angle
         
         vel_update = np.clip(vel_update, 0, self.vel_max)
-        angle_update = np.clip(angle_update, -1 * self.steer_max, self.steer_max)
         
-        return vel_update, angle_update    
+        # self.state[1] -= vel_update * np.cos(angle_update) * self.dt                         # x position update
+        # self.state[0] -= vel_update * np.sin(angle_update) * self.dt                         # y position update
+        self.state[2] = vel_update                                                        # velocity update
+        self.state[3] += (vel_update * np.tan(angle_update)) / self.wheel_base * self.dt     # yaw update
+        
+        self._update()
+        return self.get_state()    
 
-    def get_state(self, u: np.ndarray, state: np.ndarray) -> np.ndarray:
+    def get_state(self) -> np.ndarray:
         """Obtain the state of the vehicle
         """
         """ Single step rollout"""
-        new_v, new_theta = self.sim(u, state[2], state[3])
+
+        return self.state 
+    
+    def convert_to_control(self, u):
+        return [u[0] - u[1], u[2] - u[3]]
         
-        state[0] += new_v * np.cos(new_theta) * self.dt                         # x position update
-        state[1] += new_v * np.sin(new_theta) * self.dt                         # y position update
-        state[2] = new_v                                                        # velocity update
-        state[3] += (new_v * np.tan(new_theta)) / self.wheel_base * self.dt     # yaw update
-        
-        return state 
 
 class Test(Vehicle):
     """Test vehicle for demonstration of showing vehicle
@@ -88,10 +102,6 @@ class Test(Vehicle):
     def __init__(self):
         super().__init__()
         self.state = [self.rect.centerx, self.rect.centery]
-
-    def _update(self):
-        state = self.get_state()
-        self.rect.midbottom = pygame.math.Vector2(state[0], state[1])
 
     def sim(self, u):
         self.state[0] += u[3] - u[2]
