@@ -7,7 +7,7 @@ import copy
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, size = None, coords = None):
         super().__init__()
-        size = size if size is not None else (random.randint(10, 200), random.randint(10, 20))
+        size = size if size is not None else (random.randint(10, 100), random.randint(10, 20))
         coords = coords if coords is not None else (random.randint(0, 400), random.randint(-40, -20))
 
         self.surf = pygame.Surface(size)
