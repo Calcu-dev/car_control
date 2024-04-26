@@ -5,6 +5,10 @@ from vehicles.ackermann import Vehicle, Test, AckermannSteer
 from environments.road import RoadRam
 from pygame.locals import *
 
+import numpy as np
+import cv2
+import copy
+
 RESOLUTION = (400,800)
 DT = 0.05
 
@@ -20,7 +24,7 @@ class Renderer():
         
         if headless:
             os.environ['SDL_VIDEODRIVER'] = 'dummy'
-            self.display = pygame.display.set_mode((1,1))
+            self.display = pygame.display.set_mode(RESOLUTION)
         else:
             pygame.init()
             self.display = pygame.display.set_mode(RESOLUTION)
@@ -78,6 +82,10 @@ class Renderer():
                     pygame.quit()
                     sys.exit()
 
+            obs = np.uint8(copy.deepcopy(pygame.surfarray.pixels3d(self.display)))
+            # cv2.imshow("window", cv2.rotate(obs, cv2.ROTATE_90_CLOCKWISE))
+            # cv2.waitKey(1)
+            
             subset_controls = [1, 0, 0, 0]
             u = self.vehicle.convert_to_control(subset_controls)
 
@@ -114,9 +122,9 @@ if __name__ == "__main__":
     renderer = Renderer(environment=environment, 
                         vehicle=vehicle,
                         dt=DT,
-                        headless=False)
+                        headless=True)
     
-    reward = renderer.run()
+    reward = renderer.run_test()
     print(reward)
 
             
