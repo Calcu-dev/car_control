@@ -15,12 +15,13 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(center = coords)
 
 class Environment(ABC):
-    def __init__(self):
+    def __init__(self, resolution, dt):
         self.sprites = pygame.sprite.Group()
 
-        self.delete_surface = Obstacle(size=(400, 1), coords=(200, 400))
+        self.delete_surface = Obstacle(size=(resolution[0]*10, 1), coords=(int(resolution[0]/2), resolution[1]))
         self.max_objs = 10
         self.last_reward_since_obs = 0
+        self.dt = dt
 
     @abstractmethod
     def _add_obstacle(self):
@@ -46,8 +47,8 @@ class Environment(ABC):
     
 
 class RoadRam(Environment):
-    def __init__(self, vehicle):
-        super().__init__()
+    def __init__(self, vehicle, resolution, dt):
+        super().__init__(resolution, dt)
         
         if vehicle is None:
             raise Exception("Vehicle is needed for environment!")
@@ -94,11 +95,10 @@ class RoadRam(Environment):
         
         delete_list = []
         for entity in self.sprites:
-
             delete_list.append(entity if self._collides(entity, self.delete_surface) else None)
 
-            entity.rect.y = entity.rect.y + np.cos(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * 0.1
-            entity.rect.x = entity.rect.x + np.sin(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * 0.1
+            entity.rect.y = entity.rect.y + np.cos(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * self.dt
+            entity.rect.x = entity.rect.x + np.sin(np.deg2rad(self.vehicle_state[3])) * self.vehicle_state[2] * self.dt
         
         # Remove entities
         for entity in delete_list:

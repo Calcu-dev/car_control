@@ -6,12 +6,13 @@ from environments.road import RoadRam
 from pygame.locals import *
 
 RESOLUTION = (400,400)
+DT = 0.05
 
 class Renderer():
     def __init__(self,
                  environment = None,
                  vehicle : Vehicle = None,
-                 dt= 0.1):
+                 dt= 0.01):
         
         if environment is None or vehicle is None:
             raise Exception("Environment or vehicle is not defined!")
@@ -62,25 +63,28 @@ class Renderer():
 
             state = self.vehicle.sim(u)
             self.reward = self.vehicle.distance_traveled / 100.0
+            # print(self.reward)
 
             if self.reward > self.max_reward:
                 return self.reward
             
             self.environment.update_state(state, self.reward)
+            
+            self._update_display()
 
             # Check for environment - vehicle collision
             if self.environment.check_vehicle_collision(self.vehicle.rect):
                 return self.reward
             
-            self._update_display()
             self.clock.tick(self.fps)
 
 
 if __name__ == "__main__":
-    vehicle = AckermannSteer()
-    environment=RoadRam(vehicle)
+    vehicle = AckermannSteer(dt=DT, resolution=RESOLUTION)
+    environment=RoadRam(vehicle, RESOLUTION, DT)
     renderer = Renderer(environment=environment, 
-                        vehicle=vehicle)
+                        vehicle=vehicle,
+                        dt=DT)
     
     reward = renderer.run()
     print(reward)

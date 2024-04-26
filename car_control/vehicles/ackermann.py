@@ -3,12 +3,12 @@ import numpy as np
 import pygame
 
 class Vehicle(ABC, pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, resolution, dt):
         self.surf = pygame.Surface((30, 30))
         self.surf.fill((255,0,0))
-        self.rect = self.surf.get_rect(center = (200, 200))
+        self.rect = self.surf.get_rect(center = (int(resolution[0]/2), int(resolution[1]/2)))
 
-        self.dt = 0.1
+        self.dt = dt
         self.distance_traveled = 0
         pass
 
@@ -37,11 +37,12 @@ class AckermannSteer(Vehicle):
                  wheel_base = .48,
                  accel_max = 100,
                  vel_max = 200,
-                 steer_max = np.pi/6,
+                 steer_max = 45.0,
                  steer_rate = 4,
                  dt = 0.1,
+                 resolution = (400,400)
                  ):
-        super().__init__()
+        super().__init__(resolution=resolution, dt=dt)
         self.mu = mu
         self.wheel_base = wheel_base
         self.accel_max = accel_max
@@ -78,6 +79,7 @@ class AckermannSteer(Vehicle):
         # self.state[0] -= vel_update * np.sin(angle_update) * self.dt                         # y position update
         self.state[2] = vel_update                                                        # velocity update
         self.state[3] += (vel_update * np.tan(angle_update)) / self.wheel_base * self.dt     # yaw update
+        self.state[3] = np.clip(self.state[3], -self.steer_max, self.steer_max)
         
         self._update()
         return self.get_state()    
